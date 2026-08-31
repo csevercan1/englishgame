@@ -1,0 +1,650 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>English Time - 200 Words Adventure</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --primary: #00C9FF;
+            --secondary: #92FE9D;
+            --correct: #4ade80;
+            --wrong: #f87171;
+            --glass: rgba(255, 255, 255, 0.1);
+            --glass-border: rgba(255, 255, 255, 0.2);
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Outfit', sans-serif; }
+        body { 
+            background: radial-gradient(circle at top right, #1e3c72, #2a5298, #000); 
+            color: white; 
+            min-height: 100vh; 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            overflow: hidden; 
+            user-select: none; 
+        }
+        .screen {
+            position: fixed;
+            inset: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            transition: 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 10;
+        }
+        .screen.hidden { opacity: 0; pointer-events: none; transform: scale(1.1); }
+        
+        .header { 
+            width: 100%; padding: 20px; display: flex; justify-content: space-between; align-items: center; 
+            background: rgba(0, 0, 0, 0.3); backdrop-filter: blur(15px); position: fixed; top: 0; z-index: 100; 
+            border-bottom: 1px solid var(--glass-border); 
+        }
+        .score-board { display: flex; gap: 10px; }
+        .score-box { background: var(--glass); padding: 5px 15px; border-radius: 12px; font-weight: 600; border: 1px solid var(--glass-border); font-size: 0.9rem; }
+        .score-box.correct { border-color: var(--correct); color: var(--correct); }
+        .score-box.wrong { border-color: var(--wrong); color: var(--wrong); }
+
+        .game-container { margin-top: 80px; flex: 1; width: 100%; max-width: 800px; display: flex; flex-direction: column; align-items: center; gap: 20px; z-index: 1; overflow-y: auto; padding-bottom: 40px; }
+        .game-card { 
+            background: var(--glass); backdrop-filter: blur(20px); border-radius: 30px; padding: 30px; width: 100%; 
+            border: 1px solid var(--glass-border); display: flex; flex-direction: column; align-items: center; gap: 25px; 
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+        }
+        .image-container { 
+            width: 100%; max-width: 550px; height: 320px; background: rgba(0, 0, 0, 0.4); 
+            border-radius: 20px; overflow: hidden; display: flex; align-items: center; justify-content: center; 
+            position: relative; border: 2px solid var(--glass-border);
+        }
+        .word-image { width: 100%; height: 100%; object-fit: contain; transition: 0.4s; }
+        .options-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; width: 100%; }
+        .option-btn { 
+            background: var(--glass); border: 1px solid var(--glass-border); color: white; 
+            padding: 18px; font-size: 1.2rem; border-radius: 15px; cursor: pointer; transition: 0.2s all; 
+            font-weight: 600; text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        }
+        .option-btn:hover:not(:disabled) { background: rgba(255, 255, 255, 0.2); transform: translateY(-2px); box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3); }
+        .option-btn:active:not(:disabled) { transform: translateY(0); }
+        .option-btn.correct-choice { background: var(--correct) !important; border-color: white; color: black; }
+        .option-btn.wrong-choice { background: var(--wrong) !important; border-color: white; }
+        
+        .feedback-section { width: 100%; min-height: 120px; opacity: 0; transform: translateY(20px); transition: 0.4s; pointer-events: none; }
+        .feedback-section.visible { opacity: 1; transform: translateY(0); pointer-events: all; }
+        
+        .sentence-box { 
+            background: rgba(0, 0, 0, 0.4); padding: 15px; border-radius: 15px; 
+            border-left: 6px solid var(--primary); display: flex; align-items: center; margin-top: 10px;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.2);
+        }
+        .listen-btn { 
+            width: 55px; height: 55px; border-radius: 50%; border: none; 
+            background: linear-gradient(to bottom, var(--primary), #0081ff); color: white; 
+            font-size: 24px; cursor: pointer; margin-left: 15px; transition: 0.2s;
+            box-shadow: 0 5px 15px rgba(0, 201, 255, 0.4);
+        }
+        .listen-btn:hover { transform: scale(1.1); filter: brightness(1.1); }
+        
+        .controls { width: 100%; display: flex; justify-content: space-between; padding: 10px 0; align-items: center; }
+        .nav-btn { 
+            background: var(--glass); border: 1px solid var(--glass-border); color: white; 
+            padding: 12px 24px; border-radius: 30px; cursor: pointer; display: flex; 
+            align-items: center; gap: 10px; font-weight: 600; transition: 0.2s;
+        }
+        .nav-btn:hover:not(:disabled) { background: var(--glass-border); }
+        .nav-btn:disabled { opacity: 0.2; cursor: not-allowed; }
+        
+        /* Word Grid Navigation */
+        .word-nav-grid {
+            display: grid;
+            grid-template-columns: repeat(20, 1fr);
+            gap: 6px;
+            width: 100%;
+            margin-top: 15px;
+            padding: 10px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 20px;
+            border: 1px solid var(--glass-border);
+            justify-items: center;
+        }
+        
+        .nav-box {
+            aspect-ratio: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.75rem;
+            font-weight: 700;
+            background: var(--glass);
+            border: 1px solid var(--glass-border);
+            border-radius: 8px;
+            cursor: pointer;
+            transition: 0.2s all;
+            color: rgba(255,255,255,0.6);
+        }
+        .nav-box:hover { background: rgba(255, 255, 255, 0.2); transform: scale(1.1); color: white; }
+        .nav-box.current { border-color: var(--primary); box-shadow: 0 0 12px var(--primary); color: white; border-width: 2px; }
+        .nav-box.correct { background: var(--correct) !important; color: black; border-color: white; opacity: 1; }
+        .nav-box.wrong { background: var(--wrong) !important; color: white; border-color: white; opacity: 1; }
+
+        /* Start/End Screens */
+        .glass-panel {
+            background: var(--glass); backdrop-filter: blur(25px); border: 1px solid var(--glass-border);
+            border-radius: 40px; padding: 50px; text-align: center; max-width: 500px; width: 100%;
+            box-shadow: 0 40px 100px rgba(0,0,0,0.6);
+        }
+        .big-btn {
+            background: linear-gradient(45deg, var(--primary), var(--secondary));
+            border: none; color: black; padding: 20px 40px; font-size: 1.5rem; font-weight: 800;
+            border-radius: 20px; cursor: pointer; margin-top: 30px; transition: 0.3s;
+            box-shadow: 0 10px 25px rgba(146, 254, 157, 0.4);
+        }
+        .big-btn:hover { transform: scale(1.05) translateY(-5px); box-shadow: 0 15px 35px rgba(146, 254, 157, 0.6); }
+
+        .progress-indicator { font-size: 1rem; font-weight: 600; opacity: 0.7; }
+        
+        @media (max-width: 600px) {
+            .options-grid { grid-template-columns: 1fr; }
+            .image-container { height: 200px; }
+            .glass-panel { padding: 30px; }
+            .word-nav-grid { grid-template-columns: repeat(10, 1fr); }
+        }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <div style="font-size: 1.2rem; font-weight: 800;">🌍 English Time</div>
+        <div class="score-board">
+            <div class="score-box correct">Correct: <span id="correct-count">0</span></div>
+            <div class="score-box wrong">Wrong: <span id="wrong-count">0</span></div>
+            <div class="score-box" style="border-color: #ffd700; color: #ffd700;">Bonus: <span id="bonus-count">0</span></div>
+        </div>
+    </header>
+
+    <!-- Start Screen -->
+    <div id="start-screen" class="screen">
+        <div class="glass-panel">
+            <h1 style="font-size: 3rem; margin-bottom: 10px;">English Time</h1>
+            <p style="opacity: 0.8; font-size: 1.2rem;">Master 200 essential words with images and examples!</p>
+            <button id="start-btn" class="big-btn">START ADVENTURE</button>
+        </div>
+    </div>
+
+    <!-- Game Screen -->
+    <main id="game-screen" class="screen hidden" style="justify-content: center;">
+        <div class="game-container">
+            <div class="game-card">
+                <div class="image-container">
+                    <img id="item-image" class="word-image" src="" alt="">
+                </div>
+                <div id="options-grid" class="options-grid"></div>
+                <!-- Hint Section (Always visible) -->
+                <div class="sentence-box" style="width: 100%; margin: 0;">
+                    <div class="sentence-text">
+                        <div id="word-display" style="font-weight: 800; color: var(--secondary); font-size: 1.6rem; letter-spacing: 1px; display: none;"></div>
+                        <div id="sentence-display" style="font-style: italic; opacity: 0.9; line-height: 1.4;"></div>
+                        <div id="turkish-display" style="font-size: 0.9rem; opacity: 0.6; margin-top: 5px; color: #fff;"></div>
+                    </div>
+                    <button id="listen-btn" class="listen-btn"><i class="fa-solid fa-volume-high"></i></button>
+                </div>
+
+                <!-- Pronunciation Section -->
+                <div id="voice-practice" class="sentence-box" style="width: 100%; border-left-color: #ffd700; background: rgba(255, 215, 0, 0.05); flex-direction: column; gap: 10px; display: none;">
+                    <div style="display: flex; align-items: center; width: 100%;">
+                        <div style="flex: 1;">
+                            <div style="font-weight: 600; font-size: 0.9rem; color: #ffd700; margin-bottom: 2px;">Pronunciation Practice (+1 Bonus)</div>
+                            <div id="voice-status" style="font-size: 0.8rem; opacity: 0.7;">Click mic and repeat the sentence!</div>
+                        </div>
+                        <button id="mic-btn" class="listen-btn" style="background: linear-gradient(to bottom, #ffd700, #ff8c00); margin-left: 0;">
+                            <i class="fa-solid fa-microphone"></i>
+                        </button>
+                    </div>
+                    <div id="accuracy-bar-container" style="width: 100%; height: 8px; background: rgba(255,255,255,0.1); border-radius: 4px; overflow: hidden; display: none;">
+                        <div id="accuracy-bar" style="height: 100%; width: 0%; background: #ffd700; transition: 0.5s;"></div>
+                    </div>
+                    <div id="accuracy-text" style="font-weight: 800; font-size: 0.9rem; display: none;">Accuracy: 0%</div>
+                </div>
+
+                <div id="feedback-section" class="feedback-section" style="min-height: auto;">
+                    <div id="feedback-title" style="font-weight: 800; font-size: 2rem; margin-top: 10px;"></div>
+                </div>
+                <div class="controls">
+                    <button id="prev-btn" class="nav-btn"><i class="fa-solid fa-arrow-left"></i> Previous</button>
+                    <div id="progress" class="progress-indicator">1 / 200</div>
+                    <button id="next-btn" class="nav-btn">Next <i class="fa-solid fa-arrow-right"></i></button>
+                </div>
+                <!-- Navigation Grid -->
+                <div id="word-nav-grid" class="word-nav-grid"></div>
+                
+                <button id="finish-btn" class="nav-btn" style="background: var(--primary); color: black; margin-top: 10px; display: none;">Finish Session <i class="fa-solid fa-flag-checkered"></i></button>
+            </div>
+        </div>
+    </main>
+
+    <!-- End Screen -->
+    <div id="end-screen" class="screen hidden">
+        <div class="glass-panel">
+            <h2 style="font-size: 2.5rem; margin-bottom: 20px;">Session Complete!</h2>
+            <div style="display: flex; justify-content: space-around; margin: 30px 0;">
+                <div>
+                    <div id="final-correct" style="font-size: 3rem; font-weight: 800; color: var(--correct);">0</div>
+                    <div style="opacity: 0.7;">Correct</div>
+                </div>
+                <div>
+                    <div id="final-wrong" style="font-size: 3rem; font-weight: 800; color: var(--wrong);">0</div>
+                    <div style="opacity: 0.7;">Wrong</div>
+                </div>
+            </div>
+            <div id="final-percent" style="font-size: 1.2rem; font-weight: 600; margin-bottom: 30px; background: rgba(255,255,255,0.1); padding: 10px; border-radius: 10px;">Accuracy: 0%</div>
+            <div id="high-score" style="font-size: 0.9rem; opacity: 0.8; margin-top: -20px; margin-bottom: 20px;">Best Accuracy: 0%</div>
+            <button id="restart-btn" class="big-btn">PLAY AGAIN</button>
+        </div>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <script>
+        const words = [
+            ["Apple", "He loves eating apple.", "Elma yemeyi seviyor."], ["Book", "I am reading a thick book.", "Kalın bir kitap okuyorum."], ["Car", "The red car is very fast.", "Kırmızı araba çok hızlı."], ["Dog", "The dog is wagging its tail.", "Köpek kuyruğunu sallıyor."], ["Elephant", "The elephant has a long trunk.", "Filin uzun bir hortumu var."], ["Flower", "This is a beautiful red flower.", "Bu güzel kırmızı bir çiçek."], ["Guitar", "She plays the guitar every evening.", "Her akşam gitar çalıyor."], ["House", "We live in a small but cozy house.", "Küçük ama sıcak bir evde yaşıyoruz."], ["Sun", "The sun is shining bright today.", "Güneş bugün parlak bir şekilde parlıyor."], ["Tree", "The bird is sitting on the tree.", "Kuş ağacın üzerinde oturuyor."],
+            ["Moon", "The moon lights up the night sky.", "Ay gece gökyüzünü aydınlatır."], ["Star", "Look at that bright star above.", "Yukarıdaki şu parlak yıldıza bak."], ["Rain", "I love walking in the rain.", "Yağmurda yürümeyi severim."], ["Snow", "The kids are playing in the snow.", "Çocuklar karda oynuyorlar."], ["Bird", "The blue bird is singing.", "Mavi kuş şarkı söylüyor."], ["Cat", "The cat is sleeping on the mat.", "Kedi paspasın üzerinde uyuyor."], ["Fish", "The fish swims in the ocean.", "Balık okyanusta yüzer."], ["Lion", "The lion is the king of the jungle.", "Aslan ormanın kralıdır."], ["Tiger", "The tiger has orange stripes.", "Kaplanın turuncu çizgileri vardır."], ["Monkey", "The monkey is jumping between trees.", "Maymun ağaçlar arasında zıplıyor."],
+            ["Bread", "We eat fresh bread for breakfast.", "Kahvaltıda taze ekmek yeriz."], ["Milk", "Children should drink milk every day.", "Çocuklar her gün süt içmelidir."], ["Egg", "He ate a boiled egg.", "Haşlanmış bir yumurta yedi."], ["Water", "Drink plenty of water to stay healthy.", "Sağlıklı kalmak için bol su için."], ["Juice", "Would you like some orange juice?", "Biraz portakal suyu ister misiniz?"], ["Coffee", "My father drinks black coffee.", "Babam sade kahve içer."], ["Tea", "They serve hot tea with lemon.", "Limonlu sıcak çay ikram ediyorlar."], ["Cake", "She baked a chocolate cake.", "Çikolatalı bir kek pişirdi."], ["Cookie", "Do you want a chocolate chip cookie?", "Çikolatalı kurabiye ister misin?"], ["Pizza", "Let's order a large pepperoni pizza.", "Büyük bir karışık pizza sipariş edelim."],
+            ["Chair", "Please sit on the chair.", "Lütfen sandalyeye oturun."], ["Table", "Put the keys on the wooden table.", "Anahtarları tahta masanın üzerine koy."], ["Bed", "It is time to go to bed.", "Yatağa gitme vakti geldi."], ["Window", "Open the window for some fresh air.", "Temiz hava için pencereyi aç."], ["Door", "Please lock the door behind you.", "Lütfen arkandan kapıyı kilitle."], ["Key", "I lost my car key.", "Araba anahtarımı kaybettim."], ["Pen", "I wrote my name with a blue pen.", "Adımı mavi bir tükenmez kalemle yazdım."], ["Pencil", "Draw a circle with your pencil.", "Kurşun kaleminle bir daire çiz."], ["Phone", "My phone is ringing in the bag.", "Telefonum çantanın içinde çalıyor."], ["Laptop", "He is working on his laptop.", "Dizüstü bilgisayarında çalışıyor."],
+            ["Happy", "A smile makes everyone happy.", "Bir gülümseme herkesi mutlu eder."], ["Sad", "She felt sad because of the rain.", "Yağmur yüzünden üzgün hissetti."], ["Big", "Look at that big mountain!", "Şu büyük dağa bak!"], ["Small", "The ant is very small.", "Karınca çok küçüktür."], ["Red", "She wears a lovely red dress.", "Güzel bir kırmızı elbise giyiyor."], ["Blue", "The ocean is deep blue.", "Okyanus masmavidir."], ["Green", "The grass is green in summer.", "Çimler yazın yeşildir."], ["Yellow", "Sunflowers are bright yellow.", "Ayçiçekleri parlak sarıdır."], ["Black", "The cat is pure black.", "Kedi simsiyah."], ["White", "The clouds are white and fluffy.", "Bulutlar beyaz ve pofuduktur."],
+            ["Run", "They run in the park every morning.", "Her sabah parkta koşarlar."], ["Walk", "Let's take a walk by the lake.", "Göl kenarında bir yürüyüşe çıkalım."], ["Jump", "The kangaroo can jump very high.", "Kanguru çok yükseğe zıplayabilir."], ["Sleep", "The baby is having a deep sleep.", "Bebek derin bir uyku çekiyor."], ["Eat", "I like to eat fruits.", "Meyve yemeyi severim."], ["Drink", "He wants to drink cold water.", "Soğuk su içmek istiyor."], ["Read", "I want to read a new story.", "Yeni bir hikaye okumak istiyorum."], ["Write", "Write your name on the paper.", "Adını kağıdın üzerine yaz."], ["Sing", "The choir will sing a song.", "Koro bir şarkı söyleyecek."], ["Dance", "They will dance at the party.", "Partide dans edecekler."],
+            ["Cloud", "There is a big cloud in the sky.", "Gökyüzünde büyük bir bulut var."], ["Wind", "The wind is blowing strongly.", "Rüzgar sertçe esiyor."], ["Fire", "Don't play with fire.", "Ateşle oynama."], ["Mountain", "Climbing the mountain is difficult.", "Dağa tırmanmak zordur."], ["River", "The river flows to the sea.", "Nehir denize doğru akar."], ["Ocean", "The blue ocean is enormous.", "Mavi okyanus devasadır."], ["Island", "They are living on a tropical island.", "Tropikal bir adada yaşıyorlar."], ["Beach", "We spent the whole day at the beach.", "Tüm günü plajda geçirdik."], ["Sand", "Kids are making castles with sand.", "Çocuklar kumdan kaleler yapıyor."], ["Stone", "He threw a small stone into the pond.", "Gölete küçük bir taş attı."],
+            ["Farm", "The cows are grazing on the farm.", "İnekler çiftlikte otluyorlar."], ["City", "New York is a very busy city.", "New York çok yoğun bir şehirdir."], ["Road", "Follow the road to the village.", "Köy yolunu takip et."], ["Bridge", "The car crossed the stone bridge.", "Araba taş köprüden geçti."], ["Train", "The train arrives at six o'clock.", "Tren saat altıda varıyor."], ["Bus", "I take the bus to school.", "Okula otobüsle gidiyorum."], ["Bike", "He is riding his new bike.", "Yeni bisikletine biniyor."], ["Plane", "The plane is flying above the clouds.", "Uçak bulutların üzerinde uçuyor."], ["Boat", "They are rowing a small boat.", "Küçük bir tekne sürüyorlar."], ["Truck", "The big truck is carrying logs.", "Büyük kamyon tomruk taşıyor."],
+            ["Hand", "Wash your hand before dinner.", "Akşam yemeğinden önce elini yıka."], ["Foot", "She hurt her left foot.", "Sol ayağını incitti."], ["Face", "Wash your face with cold water.", "Yüzünü soğuk suyla yıka."], ["Eye", "She has beautiful green eyes.", "Onun güzel yeşil gözleri var."], ["Ear", "The rabbit has very long ears.", "Tavşanın çok uzun kulakları var."], ["Nose", "He has a small nose.", "Onun küçük bir burnu var."], ["Mouth", "Open your mouth and say ah.", "Ağzını aç ve ah de."], ["Hair", "She has long golden hair.", "Onun uzun altın sarısı saçları var."], ["Head", "Wear a hat to protect your head.", "Kafanı korumak için şapka tak."], ["Arm", "He has strong arms.", "Onun güçlü kolları var."],
+            ["Mother", "My mother cooks delicious food.", "Annem lezzetli yemekler pişirir."], ["Father", "My father is a tall man.", "Babam uzun boylu bir adamdır."], ["Brother", "My brother is older than me.", "Erkek kardeşim benden daha büyüktür."], ["Sister", "My sister loves playing with dolls.", "Kız kardeşim bebeklerle oynamayı sever."], ["Friend", "He is my best friend.", "O benim en iyi arkadaşım."], ["Teacher", "The teacher is explaining the lesson.", "Öğretmen dersi anlatıyor."], ["Student", "The student is writing a report.", "Öğrenci bir rapor yazıyor."], ["Baby", "The baby is crying softly.", "Bebek sessizce ağlıyor."], ["Man", "The man is wearing a suit.", "Adam takım elbise giyiyor."], ["Woman", "The woman is reading a book.", "Kadın kitap okuyor."],
+            ["Time", "What time is it now?", "Şu an saat kaç?"], ["Day", "Monday is the first day.", "Pazartesi ilk gündür."], ["Night", "The stars shine at night.", "Yıldızlar gece parlar."], ["Morning", "I wake up early in the morning.", "Sabahları erken uyanırım."], ["Evening", "We watch TV in the evening.", "Akşamları TV izleriz."], ["Week", "There are seven days in a week.", "Bir haftada yedi gün vardır."], ["Month", "January is the first month.", "Ocak ilk aydır."], ["Year", "Happy new year to everyone!", "Herkese mutlu yıllar!"], ["Today", "Today is a beautiful day.", "Bugün güzel bir gün."], ["Yesterday", "Yesterday was very cold.", "Dün çok soğuktu."],
+            ["Love", "I love my family very much.", "Ailemi çok seviyorum."], ["Like", "I like eating chocolate.", "Çikolata yemeyi severim."], ["Play", "Let's play football together.", "Birlikte futbol oynayalım."], ["Work", "He goes to work at nine.", "Dokuzda işe gider."], ["Study", "I need to study for the exam.", "Sınav için ders çalışmam lazım."], ["Help", "Can you help me with this bag?", "Bu çanta için bana yardım eder misin?"], ["Listen", "Listen to the music carefully.", "Müziği dikkatlice dinle."], ["Smile", "Give me a big smile.", "Bana kocaman gülümse."], ["Laugh", "The joke made everyone laugh.", "Şaka herkesi güldürdü."], ["Cry", "Don't cry everything will be okay.", "Ağlama her şey düzelecek."],
+            ["Shirt", "He is wearing a white shirt.", "Beyaz bir gömlek giyiyor."], ["Pants", "My blue pants are dirty.", "Mavi pantolonum kirli."], ["Shoes", "Take off your shoes here.", "Ayakkabılarını burada çıkar."], ["Hat", "The sun is hot wear a hat.", "Güneş sıcak, bir şapka tak."], ["Bag", "She carries a heavy bag.", "Ağır bir çanta taşıyor."], ["Watch", "I have a silver watch.", "Gümüş bir saatim var."], ["Umbrella", "Don't forget your umbrella today.", "Bugün şemsiyeni unutma."], ["Glasses", "He wears glasses to read.", "Okumak için gözlük takıyor."], ["Ring", "She is wearing a diamond ring.", "Elmas bir yüzük takıyor."], ["Clock", "The clock on the wall is slow.", "Duvardaki saat yavaş."],
+            ["Grass", "The grass is green and soft.", "Çimenler yeşil ve yumuşaktır."], ["Leaf", "The yellow leaf fell down.", "Sarı yaprak yere düştü."], ["Seed", "Plant the seed in the soil.", "Tohumu toprağa dik."], ["Root", "The tree has very deep roots.", "Ağacın çok derin kökleri var."], ["Bee", "The bee is collecting honey.", "Arı bal topluyor."], ["Butterfly", "The butterfly has colorful wings.", "Kelebeğin renkli kanatları var."], ["Ant", "The ant is carrying a crumb.", "Karınca bir kırıntı taşıyor."], ["Spider", "The spider is spinning a web.", "Örümcek ağ örüyor."], ["Frog", "The green frog jumped into the water.", "Yeşil kurbağa suya atladı."], ["Snake", "The snake is crawling in the forest.", "Yılan ormanda sürünüyor."],
+            ["School", "Children are going to school.", "Çocuklar okula gidiyorlar."], ["Home", "Stay home and stay safe.", "Evde kal ve güvende kal."], ["Park", "We are walking in the park.", "Parkta yürüyoruz."], ["Forest", "Many animals live in the forest.", "Ormanda birçok hayvan yaşar."], ["Zoo", "We saw a giraffe at the zoo.", "Hayvanat bahçesinde bir zürafa gördük."], ["Shop", "Let's go to the candy shop.", "Hadi şekerciye gidelim."], ["Hospital", "The doctor is at the hospital.", "Doktor hastanede."], ["Bank", "The bank is closed on Sundays.", "Banka Pazar günleri kapalıdır."], ["Library", "You can find many books in the library.", "Kütüphanede birçok kitap bulabilirsin."], ["Office", "He is working in his office.", "Ofisinde çalışıyor."],
+            ["One", "Give me one apple please.", "Lütfen bana bir elma ver."], ["Two", "I have two hands.", "İki elim var."], ["Three", "There are three birds.", "Üç kuş var."], ["Four", "The table has four legs.", "Masanın dört ayağı var."], ["Five", "I have five fingers.", "Beş parmağım var."], ["Six", "An insect has six legs.", "Bir böceğin altı bacağı vardır."], ["Seven", "There are seven days.", "Yedi gün vardır."], ["Eight", "The spider has eight legs.", "Örümceğin sekiz bacağı vardır."], ["Nine", "Nine clouds are in the sky.", "Gökyüzünde dokuz bulut var."], ["Ten", "I have ten toes.", "On ayak parmağım var."],
+            ["First", "He finished first in the race.", "Yarışta birinci oldu."], ["Last", "Monday was the last day.", "Pazartesi son gündü."], ["Good", "Have a good morning.", "İyi sabahlar."], ["Bad", "Eating too much sugar is bad.", "Çok şeker yemek kötüdür."], ["Fast", "The rabbit is very fast.", "Tavşan çok hızlıdır."], ["Slow", "The turtle is very slow.", "Kaplumbağa çok yavaştır."], ["Hot", "The soup is very hot.", "Çorba çok sıcak."], ["Cold", "The ice is very cold.", "Buz çok soğuktur."], ["Near", "The shop is near my house.", "Dükkan evimin yakınında."], ["Far", "The star is very far.", "Yıldız çok uzak."],
+            ["Inside", "The cat is inside the box.", "Kedi kutunun içinde."], ["Outside", "It is raining stay outside.", "Yağmur yağıyor, dışarıda kalma."], ["Up", "Look up at the sky.", "Gökyüzüne yukarı bak."], ["Down", "Sit down on the floor.", "Yere otur."], ["Left", "Turn left at the corner.", "Köşeden sola dön."], ["Right", "He uses his right hand.", "Sağ elini kullanır."], ["Old", "This is a very old castle.", "Bu çok eski bir kale."], ["New", "I bought a new car.", "Yeni bir araba aldım."], ["Easy", "The test was very easy.", "Test çok kolaydı."], ["Hard", "The rock is very hard.", "Kaya çok serttir."],
+            ["Always", "Always tell the truth.", "Her zaman doğruyu söyle."], ["Never", "Never give up your dreams.", "Hayallerinden asla vazgeçme."], ["Sometimes", "Sometimes it rains in summer.", "Bazen yazın yağmur yağar."], ["Maybe", "Maybe we can go tomorrow.", "Belki yarın gidebiliriz."], ["Yes", "Yes I can help you.", "Evet, sana yardım edebilirim."], ["No", "No thank you I'm full.", "Hayır teşekkürler, tokum."], ["Hello", "Hello how are you today?", "Merhaba bugün nasılsın?"], ["Goodbye", "Goodbye see you soon.", "Hoşça kal, yakında görüşürüz."], ["Please", "Please pass the salt.", "Lütfen tuzu uzatır mısın."], ["Thanks", "Thanks for your help.", "Yardımın için teşekkürler."],
+            ["King", "The king lives in a castle.", "Kral bir kalede yaşar."], ["Queen", "The queen is wearing a crown.", "Kraliçe bir taç takıyor."], ["Castle", "The old castle is on a hill.", "Eski kale bir tepenin üzerinde."], ["Knight", "The knight has a silver shield.", "Şövalyenin gümüş bir kalkanı var."], ["Dragon", "The dragon breathes fire.", "Ejderha ateş püskürtür."], ["Magic", "She can do a magic trick.", "Sihirbazlık numarası yapabilir."], ["Treasure", "They found a box of treasure.", "Bir kutu hazine buldular."], ["Map", "Follow the map to find it.", "Onu bulmak için haritayı takip et."], ["Compass", "The compass points to the north.", "Pusula kuzeyi gösterir."], ["Adventure", "Welcome to your new adventure!", "Yeni maceranıza hoş geldiniz!"]
+        ];
+
+        let currentIndex = 0;
+        let corrects = 0;
+        let wrongs = 0;
+        let bonus = 0;
+        let bonusAwarded = new Set(); // One bonus per word
+        let answered = new Map(); // Store index and status ('correct' or 'wrong')
+
+        const imgEl = document.getElementById('item-image');
+        const gridEl = document.getElementById('options-grid');
+        const fbSection = document.getElementById('feedback-section');
+        const fbTitle = document.getElementById('feedback-title');
+        const wordDisp = document.getElementById('word-display');
+        const sentDisp = document.getElementById('sentence-display');
+        const trDisp = document.getElementById('turkish-display');
+        const correctCount = document.getElementById('correct-count');
+        const wrongCount = document.getElementById('wrong-count');
+        const bonusCount = document.getElementById('bonus-count');
+        const progressEl = document.getElementById('progress');
+        const prevBtn = document.getElementById('prev-btn');
+        const nextBtn = document.getElementById('next-btn');
+        const finishBtn = document.getElementById('finish-btn');
+        const navGrid = document.getElementById('word-nav-grid');
+        
+        // Voice practice elements
+        const voicePractice = document.getElementById('voice-practice');
+        const voiceStatus = document.getElementById('voice-status');
+        const micBtn = document.getElementById('mic-btn');
+        const accBarCont = document.getElementById('accuracy-bar-container');
+        const accBar = document.getElementById('accuracy-bar');
+        const accText = document.getElementById('accuracy-text');
+
+        let recognition;
+        if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+            const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+            recognition = new SpeechRec();
+            recognition.lang = 'en-US';
+            recognition.interimResults = false;
+            recognition.maxAlternatives = 1;
+        }
+        
+        // Screen Elements
+        const startScreen = document.getElementById('start-screen');
+        const gameScreen = document.getElementById('game-screen');
+        const endScreen = document.getElementById('end-screen');
+
+        function showScreen(screenId) {
+            [startScreen, gameScreen, endScreen].forEach(s => s.classList.add('hidden'));
+            document.getElementById(screenId).classList.remove('hidden');
+        }
+
+        function speak(text) {
+            window.speechSynthesis.cancel();
+            const u = new SpeechSynthesisUtterance(text);
+            u.lang = 'en-US';
+            u.rate = 0.9;
+            window.speechSynthesis.speak(u);
+        }
+
+        function playSound(type) {
+            try {
+                const ctx = new (window.AudioContext || window.webkitAudioContext)();
+                if (ctx.state === 'suspended') ctx.resume();
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+                
+                if(type === 'correct') {
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(800, ctx.currentTime);
+                    osc.frequency.exponentialRampToValueAtTime(1200, ctx.currentTime + 0.1);
+                    gain.gain.setValueAtTime(0.1, ctx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.3);
+                    osc.start(); osc.stop(ctx.currentTime + 0.3);
+                } else {
+                    osc.type = 'square';
+                    osc.frequency.setValueAtTime(200, ctx.currentTime);
+                    osc.frequency.exponentialRampToValueAtTime(50, ctx.currentTime + 0.2);
+                    gain.gain.setValueAtTime(0.1, ctx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.4);
+                    osc.start(); osc.stop(ctx.currentTime + 0.4);
+                }
+            } catch(e) { console.log("Audio not supported yet"); }
+        }
+
+        function initNavGrid() {
+            updateNavGrid();
+        }
+
+        function updateNavGrid() {
+            const batchSize = 20;
+            const currentBatch = Math.floor(currentIndex / batchSize);
+            const startIdx = currentBatch * batchSize;
+            const endIdx = Math.min(startIdx + batchSize, words.length);
+
+            navGrid.innerHTML = '';
+            for(let i = startIdx; i < endIdx; i++) {
+                const box = document.createElement('div');
+                box.className = 'nav-box';
+                box.innerText = i + 1;
+                box.id = `nav-box-${i}`;
+                box.onclick = () => load(i);
+                
+                if(i === currentIndex) box.classList.add('current');
+                if(answered.has(i)) {
+                    box.classList.add(answered.get(i));
+                }
+                navGrid.appendChild(box);
+            }
+        }
+
+        function load(idx) {
+            const [word, sentence] = words[idx];
+            currentIndex = idx;
+            
+            updateNavGrid();
+
+            // Image path: prioritized from 'assets' as user is generating there
+            const assetsPath = `assets/eng (${idx + 1}).png`;
+            const adanPath = `adan foto/eng (${idx + 1}).jpg`;
+            
+            imgEl.src = assetsPath; 
+            imgEl.onerror = () => { 
+                imgEl.src = `assets/eng (${idx + 1}).jpg`;
+                imgEl.onerror = () => { 
+                    imgEl.src = adanPath;
+                    imgEl.onerror = () => { 
+                        imgEl.src = 'https://via.placeholder.com/500x350?text=' + word; 
+                    };
+                }; 
+            };
+
+            progressEl.innerText = `${idx + 1} / ${words.length}`;
+            prevBtn.disabled = idx === 0;
+            nextBtn.disabled = idx === words.length - 1;
+            
+            finishBtn.style.display = (idx === words.length - 1 || answered.size >= 10) ? 'flex' : 'none';
+
+            gridEl.innerHTML = '';
+            fbSection.classList.remove('visible');
+
+            // 1 correct + 3 random wrong options
+            let opts = [word];
+            while(opts.length < 4) {
+                let r = words[Math.floor(Math.random() * words.length)][0];
+                if(!opts.includes(r)) opts.push(r);
+            }
+            opts.sort(() => Math.random() - 0.5);
+
+            opts.forEach(opt => {
+                const btn = document.createElement('button');
+                btn.className = 'option-btn';
+                btn.innerText = opt;
+                if(answered.has(idx)) {
+                    btn.disabled = true;
+                    if(opt === word) btn.classList.add('correct-choice');
+                } else {
+                    btn.onclick = () => check(opt, word, btn);
+                }
+                gridEl.appendChild(btn);
+            });
+
+            if(answered.has(idx)) {
+                showFeedback(idx);
+            } else {
+                const [word_curr, sentence_curr, tr_curr] = words[idx];
+                sentDisp.innerText = sentence_curr;
+                trDisp.innerText = tr_curr;
+                wordDisp.innerText = word_curr;
+                wordDisp.style.display = 'none';
+                document.getElementById('listen-btn').onclick = () => speak(sentence_curr);
+                
+                // Hide voice practice until word is answered
+                voicePractice.style.display = 'none';
+                setTimeout(() => speak(word_curr), 300);
+            }
+        }
+
+        // Hybrid Word-level + Character-level Similarity
+        function getSimilarity(s1, s2) {
+            const clean = (s) => s.toLowerCase().replace(/[.,/#!$%^&*;:{}=\-_`~()]/g,"").split(/\s+/).filter(x => x.length > 0);
+            const words1 = clean(s1);
+            const words2 = clean(s2);
+            
+            if (words1.join(' ') === words2.join(' ')) return 100;
+            if (words1.length === 0 || words2.length === 0) return 0;
+
+            let totalScore = 0;
+            const lev = (a, b) => {
+                const tmp = Array(b.length + 1).fill(null).map(() => Array(a.length + 1).fill(null));
+                for (let i = 0; i <= a.length; i++) tmp[0][i] = i;
+                for (let j = 0; j <= b.length; j++) tmp[j][0] = j;
+                for (let j = 1; j <= b.length; j++) {
+                    for (let i = 1; i <= a.length; i++) {
+                        const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+                        tmp[j][i] = Math.min(tmp[j - 1][i] + 1, tmp[j][i - 1] + 1, tmp[j - 1][i - 1] + cost);
+                    }
+                }
+                const maxLen = Math.max(a.length, b.length);
+                return maxLen === 0 ? 1 : (maxLen - tmp[b.length][a.length]) / maxLen;
+            };
+
+            words2.forEach(targetWord => {
+                let bestMatch = 0;
+                words1.forEach(spokenWord => {
+                    const s = lev(spokenWord, targetWord);
+                    if (s > bestMatch) bestMatch = s;
+                });
+                totalScore += bestMatch;
+            });
+
+            const lengthPenalty = Math.min(words1.length, words2.length) / Math.max(words1.length, words2.length);
+            return Math.round((totalScore / words2.length) * 100 * lengthPenalty);
+        }
+
+        async function requestMicPermission() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                stream.getTracks().forEach(track => track.stop());
+            } catch (e) { console.log("Mic access issue:", e); }
+        }
+
+        function startVoicePractice() {
+            if (!recognition) {
+                alert("Speech recognition not supported in this browser.");
+                return;
+            }
+
+            voiceStatus.innerText = "Listening... Speak now!";
+            micBtn.style.animation = "pulse 1.5s infinite";
+            recognition.start();
+
+            recognition.onresult = (event) => {
+                const speechResult = event.results[0][0].transcript;
+                const targetSentence = words[currentIndex][1];
+                const similarity = getSimilarity(speechResult, targetSentence);
+
+                voiceStatus.innerText = `You said: "${speechResult}"`;
+                accBarCont.style.display = 'block';
+                accText.style.display = 'block';
+                accBar.style.width = similarity + '%';
+                accText.innerText = `Accuracy: ${similarity}%`;
+
+                if (similarity > 50 && !bonusAwarded.has(currentIndex)) {
+                    bonusAwarded.add(currentIndex);
+                    bonus++;
+                    bonusCount.innerText = bonus;
+                    confetti({ particleCount: 50, spread: 50, origin: { y: 0.8 }, colors: ['#ffd700'] });
+                    accText.innerText += " (+1 Bonus Point!)";
+                }
+            };
+
+            recognition.onerror = () => {
+                voiceStatus.innerText = "Error occurred. Try again.";
+                micBtn.style.animation = "none";
+            };
+
+            recognition.onend = () => {
+                micBtn.style.animation = "none";
+            };
+        }
+
+        micBtn.onclick = startVoicePractice;
+
+        // Add pulse animation to CSS
+        const style = document.createElement('style');
+        style.innerHTML = `@keyframes pulse { 0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255, 215, 0, 0.7); } 70% { transform: scale(1.1); box-shadow: 0 0 0 10px rgba(255, 215, 0, 0); } 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255, 215, 0, 0); } }`;
+        document.head.appendChild(style);
+
+        function check(sel, target, btn) {
+            if(answered.has(currentIndex)) return;
+
+            const isCorrect = sel === target;
+            answered.set(currentIndex, isCorrect ? 'correct' : 'wrong');
+
+            if(isCorrect) {
+                corrects++;
+                correctCount.innerText = corrects;
+                fbTitle.innerText = "⭐ EXCELLENT!";
+                fbTitle.style.color = "var(--correct)";
+                playSound('correct');
+                confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
+            } else {
+                wrongs++;
+                wrongCount.innerText = wrongs;
+                fbTitle.innerText = "❌ WRONG!";
+                fbTitle.style.color = "var(--wrong)";
+                playSound('wrong');
+                btn.classList.add('wrong-choice');
+            }
+
+            updateNavGrid();
+
+            Array.from(gridEl.children).forEach(b => {
+                b.disabled = true;
+                if(b.innerText === target) b.classList.add('correct-choice');
+            });
+
+            const [word, sentence] = words[currentIndex];
+            speak(sentence);
+            showFeedback(currentIndex);
+            
+            // Show voice practice after answering
+            voicePractice.style.display = 'flex';
+            accBarCont.style.display = 'none';
+            accText.style.display = 'none';
+            voiceStatus.innerText = "Click mic and repeat the sentence!";
+
+            if(answered.size >= 10) finishBtn.style.display = 'flex';
+        }
+        
+        function showFeedback(idx) {
+            const [word, sentence, tr] = words[idx];
+            wordDisp.innerText = word;
+            wordDisp.style.display = 'block';
+            sentDisp.innerText = sentence;
+            trDisp.innerText = tr;
+            fbSection.classList.add('visible');
+            document.getElementById('listen-btn').onclick = () => speak(sentence);
+            
+            // Show voice practice in feedback
+            voicePractice.style.display = 'flex';
+        }
+
+        function finishGame() {
+            document.getElementById('final-correct').innerText = corrects;
+            document.getElementById('final-wrong').innerText = wrongs;
+            const total = corrects + wrongs;
+            const percent = total > 0 ? Math.round((corrects / total) * 100) : 0;
+            document.getElementById('final-percent').innerText = `Accuracy: ${percent}% | Bonus: ${bonus}`;
+            
+            let best = localStorage.getItem('english_best') || 0;
+            if (percent > best) {
+                best = percent;
+                localStorage.setItem('english_best', best);
+            }
+            document.getElementById('high-score').innerText = `Best Accuracy: ${best}%`;
+
+            showScreen('end-screen');
+            confetti({ particleCount: 150, spread: 100, origin: { y: 0.5 } });
+        }
+
+        document.getElementById('start-btn').onclick = async () => {
+            await requestMicPermission();
+            showScreen('game-screen');
+            initNavGrid();
+            load(0);
+        };
+
+        document.getElementById('restart-btn').onclick = () => {
+            corrects = 0;
+            wrongs = 0;
+            bonus = 0;
+            bonusAwarded.clear();
+            answered.clear();
+            correctCount.innerText = 0;
+            wrongCount.innerText = 0;
+            bonusCount.innerText = 0;
+            showScreen('game-screen');
+            initNavGrid();
+            load(0);
+        };
+
+        prevBtn.onclick = () => load(currentIndex - 1);
+        nextBtn.onclick = () => load(currentIndex + 1);
+        finishBtn.onclick = finishGame;
+
+        window.onkeydown = (e) => {
+            if(gameScreen.classList.contains('hidden')) return;
+            if(e.key === 'ArrowLeft' && !prevBtn.disabled) load(currentIndex - 1);
+            if(e.key === 'ArrowRight' && !nextBtn.disabled) load(currentIndex + 1);
+            if(e.key >= '1' && e.key <= '4') {
+                const btns = gridEl.querySelectorAll('.option-btn');
+                if(btns[e.key - 1] && !btns[e.key - 1].disabled) btns[e.key - 1].click();
+            }
+        };
+
+    </script>
+</body>
+</html>
