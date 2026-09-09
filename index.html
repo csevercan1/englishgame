@@ -230,42 +230,42 @@
                     <div id="accuracy-bar-container" style="width: 100%; height: 8px; background: rgba(255,255,255,0.1); border-radius: 4px; overflow: hidden; display: none;">
                         <div id="accuracy-bar" style="height: 100%; width: 0%; background: #ffd700; transition: 0.5s;"></div>
                     </div>
-                    <div id="accuracy-text" style="font-weight: 800; font-size: 0.9rem; display: none;">Accuracy: 0%</div>
+                    <div id="accuracy-text" style="font-weight: 800; font-size: 0.9rem; display: none;">Telaffuz Benzerliği: 0%</div>
                 </div>
 
                 <div id="feedback-section" class="feedback-section" style="min-height: auto;">
                     <div id="feedback-title" style="font-weight: 800; font-size: 2rem; margin-top: 10px;"></div>
                 </div>
                 <div class="controls">
-                    <button id="prev-btn" class="nav-btn"><i class="fa-solid fa-arrow-left"></i> Previous</button>
-                    <div id="progress" class="progress-indicator">1 / 200</div>
-                    <button id="next-btn" class="nav-btn">Next <i class="fa-solid fa-arrow-right"></i></button>
+                    <button id="prev-btn" class="nav-btn"><i class="fa-solid fa-arrow-left"></i> Önceki</button>
+                    <div id="progress" class="progress-indicator"><span id="curr-idx">1</span> / 200</div>
+                    <button id="next-btn" class="nav-btn">Sonraki <i class="fa-solid fa-arrow-right"></i></button>
                 </div>
                 <!-- Navigation Grid -->
                 <div id="word-nav-grid" class="word-nav-grid"></div>
                 
-                <button id="finish-btn" class="nav-btn" style="background: var(--primary); color: black; margin-top: 10px; display: none;">Finish Session <i class="fa-solid fa-flag-checkered"></i></button>
+                <button id="finish-btn" class="nav-btn" style="background: var(--primary); color: black; margin-top: 10px; display: none;">Oturumu Bitir <i class="fa-solid fa-flag-checkered"></i></button>
             </div>
         </div>
     </main>
 
     <!-- End Screen -->
     <div id="end-screen" class="screen hidden">
-        <div class="glass-panel">
-            <h2 style="font-size: 2.5rem; margin-bottom: 20px;">Session Complete!</h2>
-            <div style="display: flex; justify-content: space-around; margin: 30px 0;">
+        <div class="glass-panel" style="background: var(--glass); border-color: var(--primary);">
+            <h2 style="font-size: 2.5rem; margin-bottom: 20px;">Oturum Tamamlandı!</h2>
+            <div style="display: flex; gap: 40px; justify-content: center; margin-bottom: 30px;">
                 <div>
                     <div id="final-correct" style="font-size: 3rem; font-weight: 800; color: var(--correct);">0</div>
-                    <div style="opacity: 0.7;">Correct</div>
+                    <div style="opacity: 0.7;">Doğru</div>
                 </div>
                 <div>
                     <div id="final-wrong" style="font-size: 3rem; font-weight: 800; color: var(--wrong);">0</div>
-                    <div style="opacity: 0.7;">Wrong</div>
+                    <div style="opacity: 0.7;">Yanlış</div>
                 </div>
             </div>
-            <div id="final-percent" style="font-size: 1.2rem; font-weight: 600; margin-bottom: 30px; background: rgba(255,255,255,0.1); padding: 10px; border-radius: 10px;">Accuracy: 0%</div>
-            <div id="high-score" style="font-size: 0.9rem; opacity: 0.8; margin-top: -20px; margin-bottom: 20px;">Best Accuracy: 0%</div>
-            <button id="restart-btn" class="big-btn">PLAY AGAIN</button>
+            <div id="final-percent" style="font-size: 1.2rem; font-weight: 600; margin-bottom: 30px; background: rgba(255,255,255,0.1); padding: 10px; border-radius: 10px;">Doğruluk: 0%</div>
+            <div id="high-score" style="font-size: 0.9rem; opacity: 0.8; margin-top: -20px; margin-bottom: 20px;">En İyi Doğruluk: 0%</div>
+            <button id="restart-btn" class="big-btn">TEKRAR OYNA</button>
         </div>
     </div>
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
@@ -297,8 +297,8 @@
         let corrects = 0;
         let wrongs = 0;
         let bonus = 0;
-        let bonusAwarded = new Set(); // One bonus per word
-        let answered = new Map(); // Store index and status ('correct' or 'wrong')
+        let bonusAwarded = new Set(); 
+        let answered = new Map(); 
 
         const imgEl = document.getElementById('item-image');
         const gridEl = document.getElementById('options-grid');
@@ -310,13 +310,12 @@
         const correctCount = document.getElementById('correct-count');
         const wrongCount = document.getElementById('wrong-count');
         const bonusCount = document.getElementById('bonus-count');
-        const progressEl = document.getElementById('progress');
+        const currIdxSpan = document.getElementById('curr-idx');
         const prevBtn = document.getElementById('prev-btn');
         const nextBtn = document.getElementById('next-btn');
         const finishBtn = document.getElementById('finish-btn');
         const navGrid = document.getElementById('word-nav-grid');
         
-        // Voice practice elements
         const voicePractice = document.getElementById('voice-practice');
         const voiceStatus = document.getElementById('voice-status');
         const micBtn = document.getElementById('mic-btn');
@@ -333,7 +332,6 @@
             recognition.maxAlternatives = 1;
         }
         
-        // Screen Elements
         const startScreen = document.getElementById('start-screen');
         const gameScreen = document.getElementById('game-screen');
         const endScreen = document.getElementById('end-screen');
@@ -410,7 +408,6 @@
             
             updateNavGrid();
 
-            // Image path: prioritized from 'assets1' since 1-200 are there, and 'assets' as fallback
             const assets1Path = `assets1/eng (${idx + 1}).png`;
             const assetsPath = `assets/eng (${idx + 1}).png`;
             const adanPath = `adan foto/eng (${idx + 1}).jpg`;
@@ -426,7 +423,7 @@
                 }; 
             };
 
-            progressEl.innerText = `${idx + 1} / ${words.length}`;
+            currIdxSpan.innerText = idx + 1;
             prevBtn.disabled = idx === 0;
             nextBtn.disabled = idx === words.length - 1;
             
@@ -435,7 +432,6 @@
             gridEl.innerHTML = '';
             fbSection.classList.remove('visible');
 
-            // 1 correct + 3 random wrong options
             let opts = [word];
             while(opts.length < 4) {
                 let r = words[Math.floor(Math.random() * words.length)][0];
@@ -466,13 +462,11 @@
                 wordDisp.style.display = 'none';
                 document.getElementById('listen-btn').onclick = () => speak(sentence_curr);
                 
-                // Hide voice practice until word is answered
                 voicePractice.style.display = 'none';
                 setTimeout(() => speak(word_curr), 300);
             }
         }
 
-        // Hybrid Word-level + Character-level Similarity
         function getSimilarity(s1, s2) {
             const clean = (s) => s.toLowerCase().replace(/[.,/#!$%^&*;:{}=\-_`~()]/g,"").split(/\s+/).filter(x => x.length > 0);
             const words1 = clean(s1);
@@ -518,11 +512,11 @@
 
         function startVoicePractice() {
             if (!recognition) {
-                alert("Speech recognition not supported in this browser.");
+                alert("Tarayıcınız ses tanımayı desteklemiyor.");
                 return;
             }
 
-            voiceStatus.innerText = "Listening... Speak now!";
+            voiceStatus.innerText = "Dinliyorum... Konuşun!";
             micBtn.style.animation = "pulse 1.5s infinite";
             recognition.start();
 
@@ -531,23 +525,23 @@
                 const targetSentence = words[currentIndex][1];
                 const similarity = getSimilarity(speechResult, targetSentence);
 
-                voiceStatus.innerText = `You said: "${speechResult}"`;
+                voiceStatus.innerText = `Söylediğiniz: "${speechResult}"`;
                 accBarCont.style.display = 'block';
                 accText.style.display = 'block';
                 accBar.style.width = similarity + '%';
-                accText.innerText = `Accuracy: ${similarity}%`;
+                accText.innerText = `Telaffuz Benzerliği: ${similarity}%`;
 
                 if (similarity > 50 && !bonusAwarded.has(currentIndex)) {
                     bonusAwarded.add(currentIndex);
                     bonus++;
                     bonusCount.innerText = bonus;
                     confetti({ particleCount: 50, spread: 50, origin: { y: 0.8 }, colors: ['#ffd700'] });
-                    accText.innerText += " (+1 Bonus Point!)";
+                    accText.innerText += " (+1 Bonus Puan!)";
                 }
             };
 
             recognition.onerror = () => {
-                voiceStatus.innerText = "Error occurred. Try again.";
+                voiceStatus.innerText = "Bir hata oluştu. Tekrar deneyin.";
                 micBtn.style.animation = "none";
             };
 
@@ -558,7 +552,6 @@
 
         micBtn.onclick = startVoicePractice;
 
-        // Add pulse animation to CSS
         const style = document.createElement('style');
         style.innerHTML = `@keyframes pulse { 0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255, 215, 0, 0.7); } 70% { transform: scale(1.1); box-shadow: 0 0 0 10px rgba(255, 215, 0, 0); } 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255, 215, 0, 0); } }`;
         document.head.appendChild(style);
@@ -572,14 +565,14 @@
             if(isCorrect) {
                 corrects++;
                 correctCount.innerText = corrects;
-                fbTitle.innerText = "⭐ EXCELLENT!";
+                fbTitle.innerText = "⭐ HARİKA!";
                 fbTitle.style.color = "var(--correct)";
                 playSound('correct');
                 confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
             } else {
                 wrongs++;
                 wrongCount.innerText = wrongs;
-                fbTitle.innerText = "❌ WRONG!";
+                fbTitle.innerText = "❌ YANLIŞ!";
                 fbTitle.style.color = "var(--wrong)";
                 playSound('wrong');
                 btn.classList.add('wrong-choice');
@@ -596,11 +589,10 @@
             speak(sentence);
             showFeedback(currentIndex);
             
-            // Show voice practice after answering
             voicePractice.style.display = 'flex';
             accBarCont.style.display = 'none';
             accText.style.display = 'none';
-            voiceStatus.innerText = "Click mic and repeat the sentence!";
+            voiceStatus.innerText = "Mikrofona tıklayın ve cümleyi tekrar edin!";
 
             if(answered.size >= 10) finishBtn.style.display = 'flex';
         }
@@ -614,7 +606,6 @@
             fbSection.classList.add('visible');
             document.getElementById('listen-btn').onclick = () => speak(sentence);
             
-            // Show voice practice in feedback
             voicePractice.style.display = 'flex';
         }
 
@@ -623,14 +614,14 @@
             document.getElementById('final-wrong').innerText = wrongs;
             const total = corrects + wrongs;
             const percent = total > 0 ? Math.round((corrects / total) * 100) : 0;
-            document.getElementById('final-percent').innerText = `Accuracy: ${percent}% | Bonus: ${bonus}`;
+            document.getElementById('final-percent').innerText = `Doğruluk: ${percent}% | Bonus: ${bonus}`;
             
             let best = localStorage.getItem('english_best') || 0;
             if (percent > best) {
                 best = percent;
                 localStorage.setItem('english_best', best);
             }
-            document.getElementById('high-score').innerText = `Best Accuracy: ${best}%`;
+            document.getElementById('high-score').innerText = `En İyi Başarı: ${best}%`;
 
             showScreen('end-screen');
             confetti({ particleCount: 150, spread: 100, origin: { y: 0.5 } });
